@@ -10,6 +10,6 @@ router.get("/", (req, res) => {
 })
 
 // Route to get presentation
-router.get("/create-ppt", createPPT)
+router.post("/create-ppt", createPPT)
 
 export default router
