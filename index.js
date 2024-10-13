@@ -20,7 +20,7 @@ let server = http.createServer(app, { allowEIO3: true });
 // Using Middleware -------------------------------------------------------------------------------------------
 
 // Whitelist for domains
-const whitelist = ['http://localhost:3000', "https://flashcardquiz.vercel.app", "https://quizzer-ai.vercel.app"]
+const whitelist = ['http://localhost:3000', "https://ppt-creator.vercel.app"]
 
 // Function to deny access to domains except those in whitelist.
 const corsOptions = {
@@ -41,7 +41,7 @@ app.use(express.urlencoded({ extended: true }));
 // Parses JSON passed inside body.
 app.use(express.json())
 // Enable CORS
-// app.use(cors(corsOptions))
+app.use(cors(corsOptions))
 // Add security to server.
 app.use(helmet())
 

@@ -26,25 +26,29 @@ export const createPPT = async (req, res) => {
 
         // Prompt to generate Multiple Choice Questions// Prompt to generate Multiple Choice Questions
         const inputString = `
-            Hey gemini, i want to create a presentation on ${req?.body?.topic}.
+            Hey Gemini, i want to create a presentation on ${req?.body?.topic}.
             Provide a title and subtitle for the presentation.
             Can you suggest an appropriate background color relating to the topic and create some slides on it.
             Provide the text color as well. Make sure that the background color and text color contrast.
             Each slide must contain ${req?.body?.points} points. Make sure the content is relavent and useful.
-            Create ${req?.body?.slides} slides.
-            Return a json object of the following format.
+            Create ${req?.body?.slides} slides. Content of presentation must flow from one slide to the next. Do NOT include a thank you slide.
+            Return a json object of the following format. 
             {
-                  background:"",
-                  textColor:""
-                  title:"",
-                  subtitle:"",
-                  slides:[
-                  {
+                background:"",
+                textColor:""
+                title:"",
+                subtitle:"",
+                slides:[ 
+                    {
                         title:"",
                         content:[""],
-                  }
-                  ]
+                    }
+                ]
             }
+
+            If content cannot be created on the provided topic, return the following json :
+            {error:""}
+            
             Do not return anything else.
             `
 
@@ -68,8 +72,8 @@ export const createPPT = async (req, res) => {
         // Creating PPT
         // ---------------------------------------------------------------------------------------------------------------------------------------------
 
-        if (jsonValues) {
-            // The text and background color for the slides
+        if (jsonValues?.slides) {
+
             let bgColor = jsonValues.background.replace("#", "");
             let textColor = jsonValues.textColor.replace("#", "");
 
@@ -85,10 +89,9 @@ export const createPPT = async (req, res) => {
 
             // Add title text
             slide.addText(jsonValues.title, {
-                x: "10%",
                 y: "30%",
-                w: "80%",
                 h: "10%",
+                w: "100%",
                 fontSize: 48,
                 align: "center",
                 bold: true,
@@ -98,9 +101,8 @@ export const createPPT = async (req, res) => {
 
             // Add subtitle text
             slide.addText(jsonValues.subtitle, {
-                x: "10%",
                 y: "65%",  // Adjusted position for subtitle
-                w: "80%",
+                w: "100%",
                 h: "10%",
                 fontSize: 24,  // Smaller font size for subtitle
                 align: "center",
@@ -109,8 +111,7 @@ export const createPPT = async (req, res) => {
                 italic: true
             });
 
-
-            // Content Slides
+            // Content
             // ---------------------------------------------------------------------------------------------------------------------------------------------
 
             // Create the content titles
@@ -122,7 +123,7 @@ export const createPPT = async (req, res) => {
 
                 // Add the title at the center of the slide
                 slide.addText(item.title, {
-                    x: "10%",  // Position from the left
+                    w: "100%",
                     y: "10%",  // Position from the top
                     h: "5%",   // Height of the text box
                     fontSize: 32,  // Font size for the title
@@ -147,7 +148,7 @@ export const createPPT = async (req, res) => {
                 });
             });
 
-            // End Slide
+            // Title
             // ---------------------------------------------------------------------------------------------------------------------------------------------
 
             // Add the end slide
@@ -166,6 +167,7 @@ export const createPPT = async (req, res) => {
                 fontFace: "Times New Roman",
                 color: textColor,
             });
+
 
             // Writing File
             // ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -190,7 +192,11 @@ export const createPPT = async (req, res) => {
                     if (unlinkErr) console.error("Failed to delete file:", unlinkErr);
                 });
             });
+        } else {
+            return res.status(400).send({ error: "Cannot create slides on provided topic" })
         }
+
+
     } catch (error) {
         console.error("An error occurred:", error);
         return res.status(500).send({ data: "Something went wrong." })
