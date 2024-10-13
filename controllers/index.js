@@ -17,17 +17,21 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_KEY);
 // Choose the model
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
+// Function to create a PPT presentation on a provided topic
 export const createPPT = async (req, res) => {
     try {
 
+        // Creating Content using Gemini
+        // ---------------------------------------------------------------------------------------------------------------------------------------------
+
         // Prompt to generate Multiple Choice Questions// Prompt to generate Multiple Choice Questions
         const inputString = `
-            Hey gemini, i want to create a presentation on Mumbai.
+            Hey gemini, i want to create a presentation on ${req?.body?.topic}.
             Provide a title and subtitle for the presentation.
             Can you suggest an appropriate background color relating to the topic and create some slides on it.
             Provide the text color as well. Make sure that the background color and text color contrast.
-            Each slide must contain 3 points. Make sure the content is relavent and useful.
-            Create 5 slides.
+            Each slide must contain ${req?.body?.points} points. Make sure the content is relavent and useful.
+            Create ${req?.body?.slides} slides.
             Return a json object of the following format.
             {
                   background:"",
@@ -60,6 +64,10 @@ export const createPPT = async (req, res) => {
         // Parse the formatted response to create a JSON Object
         const jsonValues = JSON.parse(JSONtext)
 
+
+        // Creating PPT
+        // ---------------------------------------------------------------------------------------------------------------------------------------------
+
         if (jsonValues) {
             // The text and background color for the slides
             let bgColor = jsonValues.background.replace("#", "");
@@ -67,6 +75,9 @@ export const createPPT = async (req, res) => {
 
             //Create a Presentation
             let pres = new pptxgen();
+
+            // Title
+            // ---------------------------------------------------------------------------------------------------------------------------------------------
 
             // Add the title slide
             let slide = pres.addSlide();
@@ -97,6 +108,10 @@ export const createPPT = async (req, res) => {
                 color: textColor,
                 italic: true
             });
+
+
+            // Content Slides
+            // ---------------------------------------------------------------------------------------------------------------------------------------------
 
             // Create the content titles
             jsonValues.slides.forEach((item) => {
@@ -132,6 +147,9 @@ export const createPPT = async (req, res) => {
                 });
             });
 
+            // End Slide
+            // ---------------------------------------------------------------------------------------------------------------------------------------------
+
             // Add the end slide
             slide = pres.addSlide();
             slide.background = { fill: bgColor };
@@ -149,11 +167,17 @@ export const createPPT = async (req, res) => {
                 color: textColor,
             });
 
+            // Writing File
+            // ---------------------------------------------------------------------------------------------------------------------------------------------
+
             const randomString = crypto.randomBytes(4).toString('hex'); // Generates a random 8-character hex string
             const fileName = `Presentation_${randomString}.pptx`; // Replace spaces in topic with underscores
 
             const filePath = path.join(__dirname, fileName);
             await pres.writeFile({ fileName: filePath });
+
+            // Send File
+            // ---------------------------------------------------------------------------------------------------------------------------------------------
 
             return res.sendFile(filePath, (err) => {
                 if (err) {
