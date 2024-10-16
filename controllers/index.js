@@ -28,29 +28,38 @@ export const createPPT = async (req, res) => {
         const inputString = `
             Hey Gemini, i want to create a presentation on ${req?.body?.topic}.
             Provide a title and subtitle for the presentation.
-            Can you suggest an appropriate background color relating to the topic and create some slides on it.
-            Provide the text color as well. Make sure that the background color and text color contrast.
-            Each slide must contain ${req?.body?.points} points. Make sure the content is relavent and useful.
+            Each slide must contain ${req?.body?.points} points. Make sure the content is relevant and useful.
             Create ${req?.body?.slides} slides. Content of presentation must flow from one slide to the next. Do NOT include a thank you slide.
+            Type of slide will be chart or content.
             Return a json object of the following format. 
+            ${req?.body?.includeChart ? "If possible, add some graphical data such as charts.Provide type of chart and x & y values as arrays.Provide 2 different type of charts." : "Do NOT include charts."}
+            
             {
-                background:"",
-                textColor:""
                 title:"",
                 subtitle:"",
                 slides:[ 
                     {
+                        type:"",
+                        // For chart slides, the title of slide should be the chart title. For content slides, choose an appropriate title
                         title:"",
+                        // If content slide then keep this, else have chart values
                         content:[""],
+                        chartType:""
+                        // Chart values must be in this format
+                        chart: {
+                            name: "Actual Sales",
+                            labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+                            values: [1500, 4600, 5156, 3167, 8510, 8009, 6006, 7855, 12102, 12789, 10123, 15121],
+                        },
                     }
                 ]
             }
 
-            If content cannot be created on the provided topic, return the following json :
-            {error:""}
+            If content cannot be created on the provided topic, return the following json:
+            { error: "" }
             
             Do not return anything else.
-            `
+        `
 
         // Create content for the prompt using Gemini
         const result = await model.generateContent(inputString);
@@ -74,18 +83,14 @@ export const createPPT = async (req, res) => {
 
         if (jsonValues?.slides) {
 
-            let bgColor = jsonValues.background.replace("#", "");
-            let textColor = jsonValues.textColor.replace("#", "");
-
             //Create a Presentation
-            let pres = new pptxgen();
+            let presentation = new pptxgen();
 
             // Title
             // ---------------------------------------------------------------------------------------------------------------------------------------------
 
             // Add the title slide
-            let slide = pres.addSlide();
-            slide.background = { fill: bgColor };
+            let slide = presentation.addSlide();
 
             // Add title text
             slide.addText(jsonValues.title, {
@@ -96,7 +101,6 @@ export const createPPT = async (req, res) => {
                 align: "center",
                 bold: true,
                 fontFace: "Times New Roman",
-                color: textColor,
             });
 
             // Add subtitle text
@@ -107,7 +111,6 @@ export const createPPT = async (req, res) => {
                 fontSize: 24,  // Smaller font size for subtitle
                 align: "center",
                 fontFace: "Times New Roman",
-                color: textColor,
                 italic: true
             });
 
@@ -118,42 +121,78 @@ export const createPPT = async (req, res) => {
             jsonValues.slides.forEach((item) => {
 
                 // Add new slide
-                let slide = pres.addSlide();
-                slide.background = { fill: bgColor };
+                let slide = presentation.addSlide();
+
 
                 // Add the title at the center of the slide
                 slide.addText(item.title, {
                     w: "100%",
-                    y: "10%",  // Position from the top
+                    y: "5%",  // Position from the top
                     h: "5%",   // Height of the text box
                     fontSize: 32,  // Font size for the title
                     align: "center",  // Align text to the center
                     bold: true,
                     fontFace: "Times New Roman",
-                    color: textColor,
                 });
 
-                // Add content
-                item.content.forEach((text, i) => {
-                    slide.addText(text, {
-                        x: "5%",  // Position from the left
-                        y: 2 + (i * 1),  // Position based on the index
-                        w: "90%",
-                        color: textColor,
-                        bullet: { type: "diamond" }, // Add bullet points
-                        fontSize: 20,  // Font size for content
-                        fontFace: "Times New Roman",
-                        align: "justify", // Align text to the left
+                if (item.type == "content") {
+                    // Add content
+                    item.content.forEach((text, i) => {
+                        slide.addText(text, {
+                            x: "5%",  // Position from the left
+                            y: 2 + (i * 1),  // Position based on the index
+                            w: "90%",
+
+                            bullet: { type: "diamond" }, // Add bullet points
+                            fontSize: 20,  // Font size for content
+                            fontFace: "Times New Roman",
+                            align: "justify", // Align text to the left
+                        });
                     });
-                });
+
+                } else if (item.type === "chart") {
+
+                    const chartTypeMapping = {
+                        "line": presentation.ChartType.line,
+                        "bar": presentation.ChartType.bar,
+                        "column": presentation.ChartType.bar,
+                        "pie": presentation.ChartType.pie,
+                        "doughnut": presentation.ChartType.doughnut,
+                        "radar": presentation.ChartType.radar,
+                        "area": presentation.ChartType.area,
+                        "scatter": presentation.ChartType.scatter,
+                        "bubble": presentation.ChartType.bubble,
+                        "surface": presentation.ChartType.surface,
+                        "stackedBar": presentation.ChartType.barStacked,
+                        "stackedColumn": presentation.ChartType.barStacked,
+                        "stackedArea": presentation.ChartType.areaStacked,
+                        "waterfall": presentation.ChartType.waterfall,
+                        "combo": presentation.ChartType.combo,
+                        "treemap": presentation.ChartType.treemap,
+                        "sunburst": presentation.ChartType.sunburst,
+                        "histogram": presentation.ChartType.histogram
+                    };
+
+                    const chartType = chartTypeMapping[item.chartType]
+
+                    let chartData = [item.chart]
+
+                    slide.addChart(chartType, chartData, {
+                        x: 0.5,
+                        y: 1.0,
+                        w: 9,
+                        h: 4.5,
+                        showLabel: true,
+
+                    });
+                }
             });
 
-            // Title
+            // Thank You
             // ---------------------------------------------------------------------------------------------------------------------------------------------
 
             // Add the end slide
-            slide = pres.addSlide();
-            slide.background = { fill: bgColor };
+            slide = presentation.addSlide();
 
             // Add the thank you slide
             slide.addText("Thank You", {
@@ -165,7 +204,6 @@ export const createPPT = async (req, res) => {
                 align: "center",  // Align text to the center
                 bold: true,
                 fontFace: "Times New Roman",
-                color: textColor,
             });
 
 
@@ -176,7 +214,7 @@ export const createPPT = async (req, res) => {
             const fileName = `Presentation_${randomString}.pptx`; // Replace spaces in topic with underscores
 
             const filePath = path.join(__dirname, fileName);
-            await pres.writeFile({ fileName: filePath });
+            await presentation.writeFile({ fileName: filePath });
 
             // Send File
             // ---------------------------------------------------------------------------------------------------------------------------------------------
