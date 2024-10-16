@@ -30,10 +30,11 @@ export const createPPT = async (req, res) => {
             Provide a title and subtitle for the presentation.
             Each slide must contain ${req?.body?.points} points. Make sure the content is relevant and useful.
             Create ${req?.body?.slides} slides. Content of presentation must flow from one slide to the next. Do NOT include a thank you slide.
-            Type of slide will be chart or content.
+            Type of slide will be chart , table or content.
+            Make sure the content is in plaintext.
             Return a json object of the following format. 
-            ${req?.body?.includeChart ? "If possible, add some graphical data such as charts.Provide type of chart and x & y values as arrays.Provide 2 different type of charts." : "Do NOT include charts."}
-            
+            ${req?.body?.includeChart ? "If possible, add some graphical data such as charts. Charts can be of type: line, bar, scatter, pie, area, bubble, radar, doughnut . Must contain type of chart and have x & y values as arrays. Make sure the data used for charts are relevant and correct." : "Do NOT include charts."}
+            ${req?.body?.includeTable ? "If possible, add some tabular data." : "Do NOT include tabular data."}
             {
                 title:"",
                 subtitle:"",
@@ -51,6 +52,8 @@ export const createPPT = async (req, res) => {
                             labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
                             values: [1500, 4600, 5156, 3167, 8510, 8009, 6006, 7855, 12102, 12789, 10123, 15121],
                         },
+                        // Only include for tabular slide
+                        rows : [[],[]]
                     }
                 ]
             }
@@ -77,6 +80,7 @@ export const createPPT = async (req, res) => {
         // Parse the formatted response to create a JSON Object
         const jsonValues = JSON.parse(JSONtext)
 
+        fs.writeFileSync("output.json", JSON.stringify(jsonValues))
 
         // Creating PPT
         // ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -135,16 +139,29 @@ export const createPPT = async (req, res) => {
                     fontFace: "Times New Roman",
                 });
 
+
                 if (item.type == "content") {
-                    // Add content
-                    item.content.forEach((text, i) => {
+
+                    // Adding Content
+                    item.content.forEach((text, i, arr) => {
+                        const maxItems = 5;
+                        const minFontSize = 14; // Smallest font size for more items
+                        const maxFontSize = 20; // Largest font size for fewer items
+                        const slideHeight = 5;  // Maximum height available for text placement (inches)
+
+                        // Calculate font size based on the number of items, decreasing if there are more items
+                        const fontSize = Math.max(minFontSize, maxFontSize - (arr.length - 1));
+
+                        // Adjust the 'y' position to evenly distribute the items within the available height
+                        const yIncrement = slideHeight / Math.min(arr.length, maxItems);
+                        const yPosition = 1 + ((i + 0.3) * yIncrement); // Start at y = 1 to leave space at the top
+
                         slide.addText(text, {
                             x: "5%",  // Position from the left
-                            y: 2 + (i * 1),  // Position based on the index
+                            y: yPosition, // Dynamically calculated y position
                             w: "90%",
-
                             bullet: { type: "diamond" }, // Add bullet points
-                            fontSize: 20,  // Font size for content
+                            fontSize: fontSize,  // Adjusted font size
                             fontFace: "Times New Roman",
                             align: "justify", // Align text to the left
                         });
@@ -168,7 +185,7 @@ export const createPPT = async (req, res) => {
                         "stackedArea": presentation.ChartType.areaStacked,
                         "waterfall": presentation.ChartType.waterfall,
                         "combo": presentation.ChartType.combo,
-                        "treemap": presentation.ChartType.treemap,
+                        "tree": presentation.ChartType.treemap,
                         "sunburst": presentation.ChartType.sunburst,
                         "histogram": presentation.ChartType.histogram
                     };
@@ -185,6 +202,16 @@ export const createPPT = async (req, res) => {
                         showLabel: true,
 
                     });
+                } else if (item.type === "table") {
+
+                    slide.addTable(item.rows, {
+                        x: 0.5,
+                        y: 1.0,
+                        w: 9,
+                        h: 4.5,
+                        border: { pt: 1, color: "000000" },
+                    });
+
                 }
             });
 
