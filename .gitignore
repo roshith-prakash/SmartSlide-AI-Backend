@@ -1,6 +1,7 @@
 .env
 test*js
 *.pptx
+*.docx
 node_modules
 output.json
 Presentation.pptx

@@ -5,6 +5,7 @@ import path from "path";
 import fs from "fs"
 import { fileURLToPath } from "url";
 import crypto from "crypto"
+import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
 dotenv.config();
 
 // Get __dirname for ES modules
@@ -269,3 +270,166 @@ export const createPPT = async (req, res) => {
 
 }
 
+export const createDocument = async (req, res) => {
+    try {
+        // Prompt to generate Multiple Choice Questions// Prompt to generate Multiple Choice Questions
+        const inputString = `
+            Hey Gemini, i want to write a note on ${req?.body?.topic}.
+            Provide a title for the document.
+            Make sure the content is relevant and useful.
+            Create ${req?.body?.paragraphs} paragraphs. Each paragraph must contain atleat 8 sentences. Content of document must flow from one paragraph to the next.
+            Return a json object of the following format.
+            The heading in the first element must be the same as the title.
+            The heading/title does not count as a paragraph.
+            {
+                "title": "My Document",
+                "content": [
+                    {
+                        "type": "paragraph",
+                        "text": "This is a sample paragraph in the document."
+                    },
+                    {
+                        "type": "paragraph",
+                        "text": "Here is another paragraph with some bold text.",
+                        "bold": true
+                    },
+                    {
+                        "type": "heading",
+                        "level": 2,
+                        "text": "Subsection"
+                    },
+                    {
+                        "type": "paragraph",
+                        "text": "This is a paragraph under the subsection with italicized text.",
+                        "italic": true
+                    }
+                ]
+            };
+
+            If content cannot be created on the provided topic, return the following json :
+            {error:""}
+
+            Do not return anything else.
+            `
+
+        // Create content for the prompt using Gemini
+        const result = await model.generateContent(inputString);
+        // Get the response from the result
+        const response = await result.response;
+        // Convert response to text
+        const text = response.text();
+
+        // Remove json keyword & remove `
+        let JSONtext = text.replace("json", "")
+        JSONtext = JSONtext.replaceAll("`", "")
+        // Parse the formatted response to create a JSON Object
+        const jsonValues = JSON.parse(JSONtext)
+
+        fs.writeFileSync("output.json", JSON.stringify(jsonValues))
+
+        // Create a new document with an initial empty section
+        const doc = new Document({
+            title: jsonValues.title,
+            sections: [],
+        });
+
+        // Create an array to hold all paragraphs
+        const paragraphs = [];
+
+        let paragraph = new Paragraph({
+            children: [
+                new TextRun({
+                    text: jsonValues.title,
+                    size: 36,
+                }),
+            ],
+            heading: HeadingLevel.HEADING_1,
+            spacing: {
+                after: 200
+            }
+        });
+
+        paragraphs.push(paragraph);
+
+        // Loop through the content array to build the paragraphs
+        jsonValues.content.forEach((item) => {
+            let paragraph;
+
+            if (item.type === 'heading') {
+                // Create a heading based on the specified level
+                paragraph = new Paragraph({
+                    children: [
+                        new TextRun({
+                            text: item.text,
+                            size: 36,
+                        }),
+                    ],
+                    heading: item.level === 1 ? HeadingLevel.HEADING_1 : HeadingLevel.HEADING_2,
+                    spacing: {
+                        after: 200
+                    }
+                });
+
+            } else if (item.type === 'paragraph') {
+                // Create a paragraph with optional styles
+                paragraph = new Paragraph({
+                    children: [
+                        new TextRun({
+                            text: item.text,
+                            bold: item.bold || false,
+                            italics: item.italic || false,
+                            size: 24,
+                            font: "Times New Roman",
+                        }),
+                    ],
+                    spacing: {
+                        before: 200, // Adjust the value for the desired space after the paragraph
+                        line: 300
+                    },
+                });
+            }
+
+            // Add the paragraph to the children array of the document's section
+            if (paragraph) {
+                paragraphs.push(paragraph);
+            }
+        });
+
+        doc.addSection({
+            children: paragraphs,
+        });
+
+        // Create a buffer and write the document
+        const buffer = await Packer.toBuffer(doc);
+
+
+        // Writing File
+        // ---------------------------------------------------------------------------------------------------------------------------------------------
+
+        const randomString = crypto.randomBytes(4).toString('hex'); // Generates a random 8-character hex string
+        const fileName = `Document-${randomString}.docx`; // Replace spaces in topic with underscores
+
+        const filePath = path.join(__dirname, fileName);
+        fs.writeFileSync(filePath, buffer);
+
+        // Send File
+        // ---------------------------------------------------------------------------------------------------------------------------------------------
+
+        return res.sendFile(filePath, (err) => {
+            if (err) {
+                console.error("Send file error:", err);
+                return res.status(500).send({ data: "Failed to send the file." });
+            }
+
+            // Delete the file after sending it
+            fs.unlink(filePath, (unlinkErr) => {
+                if (unlinkErr) console.error("Failed to delete file:", unlinkErr);
+            });
+        });
+
+
+
+    } catch (error) {
+        console.error("An error occurred:", error);
+    }
+}
