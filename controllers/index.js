@@ -24,7 +24,7 @@ export const createPPT = async (req, res) => {
         // Creating Content using Gemini
         // ---------------------------------------------------------------------------------------------------------------------------------------------
 
-        // Prompt to generate Multiple Choice Questions// Prompt to generate Multiple Choice Questions
+        // Prompt to generate Presentation on the provided topic
         const inputString = `
             Hey Gemini, i want to create a presentation on ${req?.body?.topic}.
             Provide a title and subtitle for the presentation.
@@ -80,7 +80,7 @@ export const createPPT = async (req, res) => {
         // Parse the formatted response to create a JSON Object
         const jsonValues = JSON.parse(JSONtext)
 
-        fs.writeFileSync("output.json", JSON.stringify(jsonValues))
+        // fs.writeFileSync("output.json", JSON.stringify(jsonValues))
 
         // Creating PPT
         // ---------------------------------------------------------------------------------------------------------------------------------------------

@@ -20,7 +20,7 @@ let server = http.createServer(app, { allowEIO3: true });
 // Using Middleware -------------------------------------------------------------------------------------------
 
 // Whitelist for domains
-const whitelist = ['http://localhost:3000', "https://ppt-creator.vercel.app"]
+const whitelist = ['http://localhost:3000', "https://ppt-creator.vercel.app","https://smartslide-ai.vercel.app"]
 
 // Function to deny access to domains except those in whitelist.
 const corsOptions = {
