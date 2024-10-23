@@ -335,106 +335,113 @@ export const createDocument = async (req, res) => {
 
         fs.writeFileSync("output.json", JSON.stringify(jsonValues))
 
-        // Create a new document with an initial empty section
-        const doc = new Document({
-            title: jsonValues.title,
-            sections: [],
-        });
 
-        // Create an array to hold all paragraphs
-        const paragraphs = [];
-
-        let paragraph = new Paragraph({
-            children: [
-                new TextRun({
-                    text: jsonValues.title,
-                    size: 36,
-                }),
-            ],
-            heading: HeadingLevel.HEADING_1,
-            spacing: {
-                after: 200
-            }
-        });
-
-        paragraphs.push(paragraph);
-
-        // Loop through the content array to build the paragraphs
-        jsonValues.content.forEach((item) => {
-            let paragraph;
-
-            if (item.type === 'heading') {
-                // Create a heading based on the specified level
-                paragraph = new Paragraph({
-                    children: [
-                        new TextRun({
-                            text: item.text,
-                            size: 36,
-                        }),
-                    ],
-                    heading: item.level === 1 ? HeadingLevel.HEADING_1 : HeadingLevel.HEADING_2,
-                    spacing: {
-                        after: 200
-                    }
-                });
-
-            } else if (item.type === 'paragraph') {
-                // Create a paragraph with optional styles
-                paragraph = new Paragraph({
-                    children: [
-                        new TextRun({
-                            text: item.text,
-                            bold: item.bold || false,
-                            italics: item.italic || false,
-                            size: 24,
-                            font: "Times New Roman",
-                        }),
-                    ],
-                    spacing: {
-                        before: 200, // Adjust the value for the desired space after the paragraph
-                        line: 300
-                    },
-                });
-            }
-
-            // Add the paragraph to the children array of the document's section
-            if (paragraph) {
-                paragraphs.push(paragraph);
-            }
-        });
-
-        doc.addSection({
-            children: paragraphs,
-        });
-
-        // Create a buffer and write the document
-        const buffer = await Packer.toBuffer(doc);
+        if (jsonValues?.content) {
 
 
-        // Writing File
-        // ---------------------------------------------------------------------------------------------------------------------------------------------
-
-        const randomString = crypto.randomBytes(4).toString('hex'); // Generates a random 8-character hex string
-        const fileName = `Document-${randomString}.docx`; // Replace spaces in topic with underscores
-
-        const filePath = path.join(__dirname, fileName);
-        fs.writeFileSync(filePath, buffer);
-
-        // Send File
-        // ---------------------------------------------------------------------------------------------------------------------------------------------
-
-        return res.sendFile(filePath, (err) => {
-            if (err) {
-                console.error("Send file error:", err);
-                return res.status(500).send({ data: "Failed to send the file." });
-            }
-
-            // Delete the file after sending it
-            fs.unlink(filePath, (unlinkErr) => {
-                if (unlinkErr) console.error("Failed to delete file:", unlinkErr);
+            // Create a new document with an initial empty section
+            const doc = new Document({
+                title: jsonValues.title,
+                sections: [],
             });
-        });
 
+            // Create an array to hold all paragraphs
+            const paragraphs = [];
+
+            let paragraph = new Paragraph({
+                children: [
+                    new TextRun({
+                        text: jsonValues.title,
+                        size: 36,
+                    }),
+                ],
+                heading: HeadingLevel.HEADING_1,
+                spacing: {
+                    after: 200
+                }
+            });
+
+            paragraphs.push(paragraph);
+
+            // Loop through the content array to build the paragraphs
+            jsonValues.content.forEach((item) => {
+                let paragraph;
+
+                if (item.type === 'heading') {
+                    // Create a heading based on the specified level
+                    paragraph = new Paragraph({
+                        children: [
+                            new TextRun({
+                                text: item.text,
+                                size: 36,
+                            }),
+                        ],
+                        heading: item.level === 1 ? HeadingLevel.HEADING_1 : HeadingLevel.HEADING_2,
+                        spacing: {
+                            after: 200
+                        }
+                    });
+
+                } else if (item.type === 'paragraph') {
+                    // Create a paragraph with optional styles
+                    paragraph = new Paragraph({
+                        children: [
+                            new TextRun({
+                                text: item.text,
+                                bold: item.bold || false,
+                                italics: item.italic || false,
+                                size: 24,
+                                font: "Times New Roman",
+                            }),
+                        ],
+                        spacing: {
+                            before: 200, // Adjust the value for the desired space after the paragraph
+                            line: 300
+                        },
+                    });
+                }
+
+                // Add the paragraph to the children array of the document's section
+                if (paragraph) {
+                    paragraphs.push(paragraph);
+                }
+            });
+
+            doc.addSection({
+                children: paragraphs,
+            });
+
+            // Create a buffer and write the document
+            const buffer = await Packer.toBuffer(doc);
+
+
+            // Writing File
+            // ---------------------------------------------------------------------------------------------------------------------------------------------
+
+            const randomString = crypto.randomBytes(4).toString('hex'); // Generates a random 8-character hex string
+            const fileName = `Document-${randomString}.docx`; // Replace spaces in topic with underscores
+
+            const filePath = path.join(__dirname, fileName);
+            fs.writeFileSync(filePath, buffer);
+
+            // Send File
+            // ---------------------------------------------------------------------------------------------------------------------------------------------
+
+            return res.sendFile(filePath, (err) => {
+                if (err) {
+                    console.error("Send file error:", err);
+                    return res.status(500).send({ data: "Failed to send the file." });
+                }
+
+                // Delete the file after sending it
+                fs.unlink(filePath, (unlinkErr) => {
+                    if (unlinkErr) console.error("Failed to delete file:", unlinkErr);
+                });
+            });
+
+        } else {
+            return res.status(400).send({ error: "Cannot create slides on provided topic" })
+        }
 
 
     } catch (error) {
