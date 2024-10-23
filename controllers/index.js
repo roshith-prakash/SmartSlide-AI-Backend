@@ -29,13 +29,17 @@ export const createPPT = async (req, res) => {
         const inputString = `
             Hey Gemini, i want to create a presentation on ${req?.body?.topic}.
             Provide a title and subtitle for the presentation.
-            Each slide must contain ${req?.body?.points} points. Make sure the content is relevant and useful.
-            Create ${req?.body?.slides} slides. Content of presentation must flow from one slide to the next. Do NOT include a thank you slide.
+            Each slide must contain ${req?.body?.points} points. 
+            Make sure the content is relevant and useful.
+            Create ${req?.body?.slides} slides. 
+            Content of presentation must flow from one slide to the next. 
+            Do NOT include a thank you slide.
             Type of slide will be chart , table or content.
             Make sure the content is in plaintext.
             Return a json object of the following format. 
             ${req?.body?.includeChart ? "If possible, add some graphical data such as charts. Charts can be of type: line, bar, scatter, pie, area, bubble, radar, doughnut . Must contain type of chart and have x & y values as arrays. Make sure the data used for charts are relevant and correct." : "Do NOT include charts."}
             ${req?.body?.includeTable ? "If possible, add some tabular data." : "Do NOT include tabular data."}
+            
             {
                 title:"",
                 subtitle:"",
@@ -270,17 +274,21 @@ export const createPPT = async (req, res) => {
 
 }
 
+// Function to create a Word document on a provided topic
 export const createDocument = async (req, res) => {
     try {
         // Prompt to generate Multiple Choice Questions// Prompt to generate Multiple Choice Questions
         const inputString = `
-            Hey Gemini, i want to write a note on ${req?.body?.topic}.
+            Hey Gemini, Write on ${req?.body?.topic}.
             Provide a title for the document.
             Make sure the content is relevant and useful.
-            Create ${req?.body?.paragraphs} paragraphs. Each paragraph must contain atleat 8 sentences. Content of document must flow from one paragraph to the next.
+            Create ${req?.body?.paragraphs} paragraphs. 
+            Length of each paragraph should be in consideration with the provided topic. 
+            Content of document must flow from one paragraph to the next.
             Return a json object of the following format.
             The heading in the first element must be the same as the title.
             The heading/title does not count as a paragraph.
+            
             {
                 "title": "My Document",
                 "content": [
@@ -431,5 +439,6 @@ export const createDocument = async (req, res) => {
 
     } catch (error) {
         console.error("An error occurred:", error);
+        return res.status(500).send({ data: "Something went wrong." })
     }
 }
