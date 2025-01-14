@@ -28,13 +28,17 @@ To run this project locally, follow these steps:
 
 Clone the repository:
 
+```bash
     git clone https://github.com/roshith-prakash/SmartSlide-AI-Backend.git
     
     cd SmartSlide-AI-Backend
+```
 
 Install dependencies:
 
+```bash
     npm install
+```
 
 Create an .env file and add the following keys: (Make sure to create a gemini api key on google's AI studio)
 
@@ -42,8 +46,10 @@ Create an .env file and add the following keys: (Make sure to create a gemini ap
 
     PORT = 4000
 
-Run the development server:
+Build & Run the development server:
 
-    npm run dev
+```bash
+    npm run build; npm run dev
+```
 
 The server should now be running on http://localhost:4000.

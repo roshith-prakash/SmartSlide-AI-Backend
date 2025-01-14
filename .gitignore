@@ -5,3 +5,4 @@ test*js
 node_modules
 output.json
 Presentation.pptx
+dist
