@@ -17,7 +17,7 @@ const __dirname = path.dirname(__filename);
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_KEY as string);
 
 // Choose the model
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
 
 // Function to create a PPT presentation on a provided topic
 export const createPPT = async (req: Request, res: Response): Promise<void> => {
@@ -27,55 +27,59 @@ export const createPPT = async (req: Request, res: Response): Promise<void> => {
 
     // Prompt to generate Presentation on the provided topic
     const inputString = `
-            Hey Gemini, i want to create a presentation on ${req?.body?.topic}.
-            Provide a title and subtitle for the presentation.
-            Each slide must contain ${req?.body?.points} points. 
-            Make sure the content is relevant and useful.
-            Create ${req?.body?.slides} slides. 
-            Content of presentation must flow from one slide to the next. 
-            Do NOT include a thank you slide.
-            Type of slide will be chart , table or content.
-            Make sure the content is in plaintext.
-            Return a json object of the following format. 
-            ${
-              req?.body?.includeChart
-                ? "If possible, add some graphical data such as charts. Charts can be of type: line, bar, scatter, pie, area, bubble, radar, doughnut . Must contain type of chart and have x & y values as arrays. Make sure the data used for charts are relevant and correct."
-                : "Do NOT include charts."
-            }
-            ${
-              req?.body?.includeTable
-                ? "If possible, add some tabular data."
-                : "Do NOT include tabular data."
-            }
-            
-            {
-                title:"",
-                subtitle:"",
-                slides:[ 
-                    {
-                        type:"",
-                        // For chart slides, the title of slide should be the chart title. For content slides, choose an appropriate title
-                        title:"",
-                        // If content slide then keep this, else have chart values
-                        content:[""],
-                        chartType:""
-                        // Chart values must be in this format
-                        chart: {
-                            name: "Actual Sales",
-                            labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
-                            values: [1500, 4600, 5156, 3167, 8510, 8009, 6006, 7855, 12102, 12789, 10123, 15121],
-                        },
-                        // Only include for tabular slide
-                        rows : [[],[]]
-                    }
-                ]
-            }
+          I want to create a presentation on ${req?.body?.topic}.  
+          Provide a title and subtitle for the presentation.  
+          Each slide must contain ${req?.body?.points} points.  
+          Ensure the content is relevant, useful, and flows logically from one slide to the next.  
+          Create ${req?.body?.slides} slides.  
+          Do NOT include a thank you slide.  
 
-            If content cannot be created on the provided topic, return the following json:
-            { error: "" }
-            
-            Do not return anything else.
-        `;
+          Slide Types:  
+          - Content (text-based slides)  
+          - Table (tabular data)  
+          - Chart (graphical data visualization)  
+
+          Content must be in plaintext.  
+
+          ${
+            req?.body?.includeChart
+              ? "Include relevant charts if possible. Chart types: line, bar, scatter, pie, area, bubble, radar, doughnut. Each chart must have a title, labels (x-axis), and values (y-axis)."
+              : "Do NOT include charts."
+          }  
+
+          ${
+            req?.body?.includeTable
+              ? "Include tabular data where relevant."
+              : "Do NOT include tabular data."
+          }  
+
+          Return JSON in the following format:  
+
+          {
+              "title": "",
+              "subtitle": "",
+              "slides": [ 
+                  {
+                      "type": "",
+                      "title": "", 
+                      "content": [""],  
+                      "chartType": "", 
+                      "chart": {
+                          "name": "Actual Sales",
+                          "labels": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+                          "values": [1500, 4600, 5156, 3167, 8510, 8009, 6006, 7855, 12102, 12789, 10123, 15121]
+                      },  
+                      "rows": [[],[]] 
+                  }
+              ]
+          }
+
+          If content cannot be created on the provided topic, return the following JSON:  
+          { "error": "" }
+
+
+          Do not return anything else.  
+`;
 
     // Create content for the prompt using Gemini
     const result = await model.generateContent(inputString);
@@ -93,7 +97,7 @@ export const createPPT = async (req: Request, res: Response): Promise<void> => {
     // Parse the formatted response to create a JSON Object
     const jsonValues = JSON.parse(JSONtext);
 
-    // fs.writeFileSync("output.json", JSON.stringify(jsonValues))
+    fs.writeFileSync("output.json", JSON.stringify(jsonValues));
 
     // Creating PPT
     // ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -103,7 +107,7 @@ export const createPPT = async (req: Request, res: Response): Promise<void> => {
       // @ts-ignore
       let presentation = new PptxGenJS();
 
-      // Title
+      // Title - WORKING
       // ---------------------------------------------------------------------------------------------------------------------------------------------
 
       // Add the title slide
@@ -131,7 +135,7 @@ export const createPPT = async (req: Request, res: Response): Promise<void> => {
         italic: true,
       });
 
-      // Content
+      // Content - NOT WORKING
       // ---------------------------------------------------------------------------------------------------------------------------------------------
 
       // Create the content titles
@@ -158,7 +162,7 @@ export const createPPT = async (req: Request, res: Response): Promise<void> => {
             fontFace: "Times New Roman",
           });
 
-          if (item.type == "content" && item?.content) {
+          if (item.type?.toLowerCase() == "content" && item?.content) {
             // Adding Content
             item.content.forEach((text, i, arr) => {
               const maxItems = 5;
@@ -186,7 +190,7 @@ export const createPPT = async (req: Request, res: Response): Promise<void> => {
                 align: "justify", // Align text to the left
               });
             });
-          } else if (item.type === "chart") {
+          } else if (item.type?.toLowerCase() === "chart") {
             const chartTypeMapping = {
               line: presentation.ChartType.line,
               bar: presentation.ChartType.bar,
@@ -242,7 +246,7 @@ export const createPPT = async (req: Request, res: Response): Promise<void> => {
                 showLabel: true,
               });
             }
-          } else if (item.type === "table") {
+          } else if (item.type?.toLowerCase() === "table") {
             slide.addTable(item.rows, {
               x: 0.5,
               y: 1.0,
@@ -254,7 +258,7 @@ export const createPPT = async (req: Request, res: Response): Promise<void> => {
         }
       );
 
-      // Thank You
+      // Thank You - WORKING
       // ---------------------------------------------------------------------------------------------------------------------------------------------
 
       // Add the end slide
@@ -312,48 +316,61 @@ export const createDocument = async (
   res: Response
 ): Promise<void> => {
   try {
-    // Prompt to generate Multiple Choice Questions// Prompt to generate Multiple Choice Questions
+    // Prompt to generate Document
     const inputString = `
-            Hey Gemini, Write on ${req?.body?.topic}.
-            Provide a title for the document.
-            Make sure the content is relevant and useful.
-            Create ${req?.body?.paragraphs} paragraphs. 
-            Length of each paragraph should be in consideration with the provided topic. 
-            Content of document must flow from one paragraph to the next.
-            Return a json object of the following format.
-            The heading in the first element must be the same as the title.
-            The heading/title does not count as a paragraph.
-            
-            {
-                "title": "My Document",
-                "content": [
-                    {
-                        "type": "paragraph",
-                        "text": "This is a sample paragraph in the document."
-                    },
-                    {
-                        "type": "paragraph",
-                        "text": "Here is another paragraph with some bold text.",
-                        "bold": true
-                    },
-                    {
-                        "type": "heading",
-                        "level": 2,
-                        "text": "Subsection"
-                    },
-                    {
-                        "type": "paragraph",
-                        "text": "This is a paragraph under the subsection with italicized text.",
-                        "italic": true
-                    }
-                ]
-            };
+      Write about ${req?.body?.topic}.
+      Provide a title for the document.
+      Ensure the content is relevant, useful, and flows logically from one paragraph to the next.
+      Create ${req?.body?.paragraphs} paragraphs, with lengths appropriate to the topic.
 
-            If content cannot be created on the provided topic, return the following json :
-            {error:""}
+      Formatting Rules:
+      - The title must be the same as the heading in the first element.
+      - The title/heading does not count as a paragraph.
+      - The document should include a mix of plain paragraphs, bold text, italicized text, and subheadings for better readability.
+      - Use bullet points and numbered lists where appropriate to enhance readability.
+      - Add line breaks between paragraphs for better visual separation.
 
-            Do not return anything else.
-            `;
+      Return JSON in the following format:
+      {
+        "title": "My Document",
+        "content": [
+          {
+            "type": "paragraph",
+            "text": "This is a sample paragraph in the document."
+          },
+          {
+            "type": "paragraph",
+            "text": "Here is another paragraph with some bold text.",
+            "bold": true
+          },
+          {
+            "type": "heading",
+            "level": 2,
+            "text": "Subsection"
+          },
+          {
+            "type": "paragraph",
+            "text": "This is a paragraph under the subsection with italicized text.",
+            "italic": true
+          },
+          {
+            "type": "list",
+            "format": "bullet",
+            "items": ["Item 1", "Item 2", "Item 3"]
+          },
+          {
+            "type": "list",
+            "format": "number",
+            "items": ["First step", "Second step", "Third step"]
+          }
+        ]
+      }
+
+      If content cannot be created for the provided topic, return the following JSON:
+      { "error": "" }
+
+      Do not return anything else.
+    `;
 
     // Create content for the prompt using Gemini
     const result = await model.generateContent(inputString);
@@ -393,10 +410,12 @@ export const createDocument = async (
       jsonValues.content.forEach(
         (item: {
           type: string;
-          text: string;
+          text?: string;
           bold?: boolean;
           italic?: boolean;
           level?: number;
+          items?: string[];
+          format?: string;
         }) => {
           let paragraph;
 
@@ -405,7 +424,7 @@ export const createDocument = async (
             paragraph = new Paragraph({
               children: [
                 new TextRun({
-                  text: item.text,
+                  text: item.text || "",
                   size: 36,
                 }),
               ],
@@ -422,7 +441,7 @@ export const createDocument = async (
             paragraph = new Paragraph({
               children: [
                 new TextRun({
-                  text: item.text,
+                  text: item.text || "",
                   bold: item.bold || false,
                   italics: item.italic || false,
                   size: 24,
@@ -434,6 +453,28 @@ export const createDocument = async (
                 line: 300,
               },
             });
+          } else if (item.type === "list" && item.items) {
+            item.items.forEach((listItem) => {
+              paragraph = new Paragraph({
+                children: [
+                  new TextRun({
+                    text: listItem,
+                    size: 24,
+                    font: "Times New Roman",
+                  }),
+                ],
+                bullet: item.format === "bullet" ? { level: 0 } : undefined,
+                numbering:
+                  item.format === "number"
+                    ? { reference: "my-unique-list-id", level: 0 }
+                    : undefined,
+                spacing: {
+                  before: 100,
+                },
+              });
+              paragraphs.push(paragraph);
+            });
+            return;
           }
 
           // Add the paragraph to the children array of the document's section

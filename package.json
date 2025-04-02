@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "npx tsc",
+    "devCompiler": "npx tsc --watch",
     "dev": "nodemon dist/index.js",
     "server": "node dist/index.js"
   },
